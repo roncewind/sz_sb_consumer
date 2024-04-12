@@ -7,7 +7,9 @@ import sys
 import time
 import traceback
 
+import orjson
 from azure.servicebus import ServiceBusClient
+from senzing import G2Engine
 
 INTERVAL = 10000
 LONG_RECORD = os.getenv("LONG_RECORD", default=300)
@@ -17,6 +19,27 @@ TUPLE_STARTTIME = 1
 TUPLE_EXTENDED = 2
 
 log_format = "%(asctime)s %(message)s"
+
+
+def process_msg(engine, msg, info):
+    try:
+        record = orjson.loads(msg)
+        if info:
+            response = bytearray()
+            engine.addRecordWithInfo(
+                record["DATA_SOURCE"], record["RECORD_ID"], msg, response
+            )
+            return response.decode()
+        else:
+            engine.addRecord(record["DATA_SOURCE"], record["RECORD_ID"], msg)
+            return None
+    except Exception as err:
+        print(f"{err} [{msg}]", file=sys.stderr)
+        raise
+
+
+# -----------------------------------------------------------------------------
+# main
 
 try:
 
@@ -69,8 +92,8 @@ try:
         exit(-1)
 
     # Initialize the G2Engine
-    # g2 = G2Engine()
-    # g2.init("sz_sqs_consumer", engine_config, args.debugTrace)
+    g2 = G2Engine()
+    g2.init("sz_sb_consumer", engine_config, args.debugTrace)
     logCheckTime = prevTime = time.time()
 
     # senzing_governor = importlib.import_module("senzing_governor")
@@ -105,6 +128,7 @@ try:
             )
             for msg in received_msgs:
                 print(str(msg))
+                process_msg(g2, msg.body, args.info)
                 receiver.complete_message(msg)
 
 
