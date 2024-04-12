@@ -135,7 +135,8 @@ try:
                 max_message_count=10, max_wait_time=5
             )
             for msg in received_msgs:
-                process_msg(g2, msg, False)
+                # process_msg(g2, msg, False)
+                print(str(msg))
                 receiver.complete_message(msg)
 
 
