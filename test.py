@@ -29,7 +29,6 @@ def process_msg(engine, msg, info):
         print("--> " + str(msg))
         print("------------")
         record = orjson.loads(str(msg).strip())
-        # record = json.loads(str(msg).strip())
         print("DATA_SOURCE: " + record["DATA_SOURCE"])
         print("RECORD_ID: " + record["RECORD_ID"])
         if info:
@@ -104,9 +103,14 @@ try:
         exit(-1)
 
     # Initialize the G2Engine
+    print("Initializing G2 engine")
     g2 = G2Engine()
-    g2.init("sz_sb_consumer", engine_config, args.debugTrace)
+    debugTrace = args.debugTrace
+    if not debugTrace:
+        debugTrace = os.getenv("LOADER_DEBUG_TRACE", False)
+    g2.init("sz_sb_consumer", engine_config, debugTrace)
     logCheckTime = prevTime = time.time()
+    print(f"Initializing G2 engine {logCheckTime}")
 
     # senzing_governor = importlib.import_module("senzing_governor")
     # governor = senzing_governor.Governor(hint="sz_sqs_consumer")
