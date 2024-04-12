@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 
 import argparse
-import json
 import logging
 import os
 import sys
@@ -28,8 +27,8 @@ def process_msg(engine, msg, info):
         print("------------")
         print("--> " + str(msg))
         print("------------")
-        # record = orjson.loads(msg)
-        record = json.loads(str(msg).strip())
+        record = orjson.loads(str(msg).strip())
+        # record = json.loads(str(msg).strip())
         print("DATA_SOURCE: " + record["DATA_SOURCE"])
         print("RECORD_ID: " + record["RECORD_ID"])
         if info:
