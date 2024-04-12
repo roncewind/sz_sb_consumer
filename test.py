@@ -128,8 +128,8 @@ try:
             )
             for msg in received_msgs:
                 print(str(msg))
-                print("message body python type: {type(msg.body)}")
-                print("message body_type: {msg.body_type}")
+                print(f"message body python type: {type(msg.body)}")
+                print(f"message body_type: {msg.body_type}")
                 process_msg(g2, str(msg.body), args.info)
                 receiver.complete_message(msg)
 
