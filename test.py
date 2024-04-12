@@ -1,13 +1,13 @@
 #! /usr/bin/env python3
 
 import argparse
+import json
 import logging
 import os
 import sys
 import time
 import traceback
 
-import orjson
 from azure.servicebus import ServiceBusClient
 from senzing import G2Engine
 
@@ -21,9 +21,15 @@ TUPLE_EXTENDED = 2
 log_format = "%(asctime)s %(message)s"
 
 
+# -----------------------------------------------------------------------------
+# add the message to Senzing
 def process_msg(engine, msg, info):
     try:
-        record = orjson.loads(msg)
+        print("****")
+        print(str(msg))
+        print("****")
+        # record = orjson.loads(msg)
+        record = json.loads(str(msg))
         if info:
             response = bytearray()
             engine.addRecordWithInfo(
@@ -31,7 +37,7 @@ def process_msg(engine, msg, info):
             )
             return response.decode()
         else:
-            engine.addRecord(record["DATA_SOURCE"], record["RECORD_ID"], msg)
+            engine.addRecord(record["DATA_SOURCE"], record["RECORD_ID"], str(msg))
             return None
     except Exception as err:
         print(f"{err} [{msg}]", file=sys.stderr)
@@ -127,12 +133,9 @@ try:
                 max_message_count=10, max_wait_time=5
             )
             for msg in received_msgs:
-                print("****")
-                print(str(msg))
-                print("****")
                 print("message body python type: {}".format(type(msg.body)))
                 print("message body_type: {}".format(msg.body_type))
-                process_msg(g2, str(msg.body), args.info)
+                process_msg(g2, str(msg.body), False)
                 receiver.complete_message(msg)
 
 
