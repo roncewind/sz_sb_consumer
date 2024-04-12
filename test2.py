@@ -25,13 +25,13 @@ log_format = "%(asctime)s %(message)s"
 # add the message to Senzing
 def process_msg(engine, msg, info):
     try:
-        print("message body python type: {}".format(type(msg.body)))
-        print("message body_type: {}".format(msg.body_type))
-        print("****")
-        print(str(msg))
-        print("****")
+        print("------------")
+        print("--> " + str(msg))
+        print("------------")
         # record = orjson.loads(msg)
-        record = json.loads(str(msg))
+        record = json.loads(str(msg).strip())
+        print("DATA_SOURCE: " + record["DATA_SOURCE"])
+        print("RECORD_ID: " + record["RECORD_ID"])
         if info:
             response = bytearray()
             engine.addRecordWithInfo(
@@ -39,7 +39,9 @@ def process_msg(engine, msg, info):
             )
             return response.decode()
         else:
-            engine.addRecord(record["DATA_SOURCE"], record["RECORD_ID"], str(msg))
+            engine.addRecord(
+                record["DATA_SOURCE"], record["RECORD_ID"], str(msg).strip()
+            )
             return None
     except Exception as err:
         print(f"{err} [{msg}]", file=sys.stderr)
@@ -135,10 +137,7 @@ try:
                 max_message_count=10, max_wait_time=5
             )
             for msg in received_msgs:
-                # process_msg(g2, msg, False)
-                print("------------")
-                print("--> " + str(msg))
-                print("------------")
+                process_msg(g2, msg, False)
                 receiver.complete_message(msg)
 
 
