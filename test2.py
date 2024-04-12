@@ -39,9 +39,11 @@ def process_msg(engine, msg, info):
             )
             return response.decode()
         else:
+            print(">>>>> calling addRecord")
             engine.addRecord(
                 record["DATA_SOURCE"], record["RECORD_ID"], str(msg).strip()
             )
+            print("<<<<<< addRecord")
             return None
     except Exception as err:
         print(f"{err} [{msg}]", file=sys.stderr)
