@@ -25,6 +25,8 @@ log_format = "%(asctime)s %(message)s"
 # add the message to Senzing
 def process_msg(engine, msg, info):
     try:
+        print("message body python type: {}".format(type(msg.body)))
+        print("message body_type: {}".format(msg.body_type))
         print("****")
         print(str(msg))
         print("****")
@@ -133,9 +135,7 @@ try:
                 max_message_count=10, max_wait_time=5
             )
             for msg in received_msgs:
-                print("message body python type: {}".format(type(msg.body)))
-                print("message body_type: {}".format(msg.body_type))
-                process_msg(g2, msg.body, False)
+                process_msg(g2, msg, False)
                 receiver.complete_message(msg)
 
 
