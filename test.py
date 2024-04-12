@@ -7,6 +7,7 @@ import sys
 import time
 import traceback
 
+import orjson
 from azure.servicebus import ServiceBusClient
 from senzing import G2Engine
 
