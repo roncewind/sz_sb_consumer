@@ -136,7 +136,9 @@ try:
             )
             for msg in received_msgs:
                 # process_msg(g2, msg, False)
+                print("------------")
                 print("--> " + str(msg))
+                print("------------")
                 receiver.complete_message(msg)
 
 
