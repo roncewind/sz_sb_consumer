@@ -135,7 +135,7 @@ try:
             for msg in received_msgs:
                 print("message body python type: {}".format(type(msg.body)))
                 print("message body_type: {}".format(msg.body_type))
-                process_msg(g2, str(msg.body), False)
+                process_msg(g2, msg.body, False)
                 receiver.complete_message(msg)
 
 
