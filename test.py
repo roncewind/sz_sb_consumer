@@ -7,6 +7,8 @@ import sys
 import time
 import traceback
 
+from azure.servicebus import ServiceBusClient
+
 INTERVAL = 10000
 LONG_RECORD = os.getenv("LONG_RECORD", default=300)
 
@@ -77,9 +79,9 @@ try:
     # sqs = boto3.client("sqs")
 
     # setupt the queue
-    queue_url = args.url
-    if not queue_url:
-        queue_url = os.getenv("SENZING_AZURE_QUEUE_CONNECTION_STRING")
+    connection_str = args.url
+    if not connection_str:
+        connection_str = os.getenv("SENZING_AZURE_QUEUE_CONNECTION_STRING")
 
     max_workers = int(os.getenv("SENZING_THREADS_PER_PROCESS", 0))
     prefetch = int(os.getenv("SENZING_PREFETCH", -1))
@@ -89,9 +91,26 @@ try:
 
     print(f"max_workers: {max_workers}")
     print(f"prefetch: {prefetch}")
-    print(f"queue_url: {queue_url}")
+    print(f"queue_url: {connection_str}")
+
+    queue_name = os.environ["SENZING_AZURE_QUEUE_NAME"]
+
+    servicebus_client = ServiceBusClient.from_connection_string(conn_str=connection_str)
+
+    with servicebus_client:
+        receiver = servicebus_client.get_queue_receiver(queue_name=queue_name)
+        with receiver:
+            received_msgs = receiver.receive_messages(
+                max_message_count=10, max_wait_time=5
+            )
+            for msg in received_msgs:
+                print(str(msg))
+                receiver.complete_message(msg)
+
 
 except Exception as err:
     print(err, file=sys.stderr)
     traceback.print_exc()
     exit(-1)
+
+print("Receive is done.")
