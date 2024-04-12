@@ -127,7 +127,9 @@ try:
                 max_message_count=10, max_wait_time=5
             )
             for msg in received_msgs:
+                print("****")
                 print(str(msg))
+                print("****")
                 print("message body python type: {}".format(type(msg.body)))
                 print("message body_type: {}".format(msg.body_type))
                 process_msg(g2, str(msg.body), args.info)
