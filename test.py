@@ -32,15 +32,17 @@ def process_msg(engine, msg, info):
         record = json.loads(str(msg).strip())
         print("DATA_SOURCE: " + record["DATA_SOURCE"])
         print("RECORD_ID: " + record["RECORD_ID"])
-        # if info:
-        #     response = bytearray()
-        #     engine.addRecordWithInfo(
-        #         record["DATA_SOURCE"], record["RECORD_ID"], msg, response
-        #     )
-        #     return response.decode()
-        # else:
-        #     engine.addRecord(record["DATA_SOURCE"], record["RECORD_ID"], str(msg))
-        #     return None
+        if info:
+            response = bytearray()
+            engine.addRecordWithInfo(
+                record["DATA_SOURCE"], record["RECORD_ID"], msg, response
+            )
+            return response.decode()
+        else:
+            engine.addRecord(
+                record["DATA_SOURCE"], record["RECORD_ID"], str(msg).strip()
+            )
+            return None
     except Exception as err:
         print(f"{err} [{msg}]", file=sys.stderr)
         raise
