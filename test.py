@@ -8,7 +8,7 @@ import time
 import traceback
 
 import orjson
-from azure.servicebus import ServiceBusClient
+from azure.servicebus import AutoLockRenewer, ServiceBusClient
 from senzing import G2Engine
 
 INTERVAL = 10000
@@ -105,12 +105,9 @@ try:
     # Initialize the G2Engine
     print("Initializing G2 engine")
     g2 = G2Engine()
-    debugTrace = args.debugTrace
-    if not debugTrace:
-        debugTrace = os.getenv("LOADER_DEBUG_TRACE", False)
-    g2.init("sz_sb_consumer", engine_config, debugTrace)
+    g2.init("sz_sb_consumer", engine_config, args.debugTrace)
     logCheckTime = prevTime = time.time()
-    print(f"Initializing G2 engine {logCheckTime}")
+    print(f"Initializing G2 engine completed: {logCheckTime}")
 
     # senzing_governor = importlib.import_module("senzing_governor")
     # governor = senzing_governor.Governor(hint="sz_sqs_consumer")
@@ -134,18 +131,23 @@ try:
 
     queue_name = os.environ["SENZING_AZURE_QUEUE_NAME"]
 
-    servicebus_client = ServiceBusClient.from_connection_string(conn_str=connection_str)
+    # servicebus_client = ServiceBusClient.from_connection_string(conn_str=connection_str)
 
-    with servicebus_client:
-        receiver = servicebus_client.get_queue_receiver(queue_name=queue_name)
-        with receiver:
+    renewer = AutoLockRenewer()
+    with ServiceBusClient.from_connection_string(
+        conn_str=connection_str
+    ) as servicebus_client:
+        with servicebus_client.get_queue_receiver(queue_name=queue_name) as receiver:
+            renewer.register(
+                receiver, receiver.session, max_lock_renewal_duration=3600
+            )  # Duration for how long to maintain the lock for, in seconds.
             received_msgs = receiver.receive_messages(
                 max_message_count=10, max_wait_time=5
             )
             for msg in received_msgs:
                 process_msg(g2, msg, False)
                 receiver.complete_message(msg)
-
+    renewer.close()
 
 except Exception as err:
     print(err, file=sys.stderr)
