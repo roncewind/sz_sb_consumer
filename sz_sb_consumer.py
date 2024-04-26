@@ -26,11 +26,11 @@ log_format = "%(asctime)s %(message)s"
 # add the message to Senzing
 def process_msg(engine, msg, info):
     try:
-        print("------------")
-        print("--> " + str(msg))
-        print("------------")
+        # print("------------")
+        # print("--> " + str(msg))
+        # print("------------")
         record = orjson.loads(str(msg).strip())
-        print("DATA_SOURCE: " + record["DATA_SOURCE"])
+        # print("DATA_SOURCE: " + record["DATA_SOURCE"])
         print("RECORD_ID: " + record["RECORD_ID"])
         if info:
             response = bytearray()
@@ -39,11 +39,11 @@ def process_msg(engine, msg, info):
             )
             return response.decode()
         else:
-            print(">>>>> calling addRecord")
+            # print(">>>>> calling addRecord")
             engine.addRecord(
                 record["DATA_SOURCE"], record["RECORD_ID"], str(msg).strip()
             )
-            print("<<<<<< addRecord")
+            # print("<<<<<< addRecord")
             return None
     except Exception as err:
         print(f"{err} [{msg}]", file=sys.stderr)
@@ -174,10 +174,8 @@ try:
                                 msg = futures.pop(fut)
                                 try:
                                     result = fut.result()
-                                    if result:
-                                        print(
-                                            result
-                                        )  # we would handle pushing to withinfo queues here BUT that is likely a second future task/executor
+                                    # if result:
+                                    # print(result)  # we would handle pushing to withinfo queues here BUT that is likely a second future task/executor
                                 except (
                                     G2RetryTimeoutExceeded,
                                     G2BadInputException,
@@ -310,7 +308,7 @@ try:
                                 #     MaxNumberOfMessages=max_msgs,
                                 #     WaitTimeSeconds=1,
                                 # )
-                                print(response)
+                                # print(response)
                                 if not response:
                                     if len(futures) == 0:
                                         time.sleep(0.1)
