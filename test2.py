@@ -8,7 +8,7 @@ import time
 import traceback
 
 import orjson
-from azure.servicebus import ServiceBusClient
+from azure.servicebus import AutoLockRenewer, ServiceBusClient
 from senzing import G2Engine
 
 INTERVAL = 10000
@@ -133,16 +133,19 @@ try:
 
     servicebus_client = ServiceBusClient.from_connection_string(conn_str=connection_str)
 
-    with servicebus_client:
-        receiver = servicebus_client.get_queue_receiver(queue_name=queue_name)
-        with receiver:
+    renewer = AutoLockRenewer()
+    with ServiceBusClient.from_connection_string(
+        conn_str=connection_str
+    ) as servicebus_client:
+        with servicebus_client.get_queue_receiver(queue_name=queue_name) as receiver:
             received_msgs = receiver.receive_messages(
                 max_message_count=10, max_wait_time=5
             )
             for msg in received_msgs:
+                renewer.register(receiver, msg, max_lock_renewal_duration=3600)
                 process_msg(g2, msg, False)
                 receiver.complete_message(msg)
-
+    renewer.close()
 
 except Exception as err:
     print(err, file=sys.stderr)
