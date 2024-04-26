@@ -26,9 +26,6 @@ log_format = "%(asctime)s %(message)s"
 # add the message to Senzing
 def process_msg(engine, msg, info):
     try:
-        # print("------------")
-        # print("--> " + str(msg))
-        # print("------------")
         record = orjson.loads(str(msg).strip())
         # print("DATA_SOURCE: " + record["DATA_SOURCE"])
         print("RECORD_ID: " + record["RECORD_ID"])
@@ -39,11 +36,9 @@ def process_msg(engine, msg, info):
             )
             return response.decode()
         else:
-            # print(">>>>> calling addRecord")
             engine.addRecord(
                 record["DATA_SOURCE"], record["RECORD_ID"], str(msg).strip()
             )
-            # print("<<<<<< addRecord")
             return None
     except Exception as err:
         print(f"{err} [{msg}]", file=sys.stderr)
@@ -110,15 +105,16 @@ try:
     logCheckTime = prevTime = time.time()
     print(f"Initializing G2 engine completed: {logCheckTime}")
 
-    # senzing_governor = importlib.import_module("senzing_governor")
-    # governor = senzing_governor.Governor(hint="sz_sqs_consumer")
-
-    # sqs = boto3.client("sqs")
-
     # setupt the queue
     connection_str = args.url
     if not connection_str:
         connection_str = os.getenv("SENZING_AZURE_QUEUE_CONNECTION_STRING")
+    if not connection_str:
+        print(
+            "The environment variable SENZING_AZURE_QUEUE_CONNECTION_STRING must be set.",
+            file=sys.stderr,
+        )
+        exit(-1)
 
     max_workers = int(os.getenv("SENZING_THREADS_PER_PROCESS", 0))
     prefetch = int(os.getenv("SENZING_PREFETCH", -1))
@@ -130,22 +126,19 @@ try:
     print(f"prefetch: {prefetch}")
     print(f"queue_url: {connection_str}")
 
-    queue_name = os.environ["SENZING_AZURE_QUEUE_NAME"]
-
-    # servicebus_client = ServiceBusClient.from_connection_string(conn_str=connection_str)
+    queue_name = os.getenv("SENZING_AZURE_QUEUE_NAME")
+    if not queue_name:
+        print(
+            "The environment variable SENZING_AZURE_QUEUE_NAME must be set.",
+            file=sys.stderr,
+        )
+        exit(-1)
 
     renewer = AutoLockRenewer()
     with ServiceBusClient.from_connection_string(
         conn_str=connection_str
     ) as servicebus_client:
         with servicebus_client.get_queue_receiver(queue_name=queue_name) as receiver:
-            # received_msgs = receiver.receive_messages(
-            #     max_message_count=10, max_wait_time=5
-            # )
-            # for msg in received_msgs:
-            #     renewer.register(receiver, msg, max_lock_renewal_duration=3600)
-            #     process_msg(g2, msg, False)
-            #     receiver.complete_message(msg)
 
             messages = 0
             duration = 0
@@ -181,34 +174,18 @@ try:
                                     G2BadInputException,
                                 ) as err:
                                     print(err)
-                                    # in SQS you have to push to deadletter
                                     record = orjson.loads(str(msg[TUPLE_MSG]).strip())
                                     print(
                                         f'Sending to deadletter: {record["DATA_SOURCE"]} : {record["RECORD_ID"]}'
                                     )
                                     receiver.dead_letter_message(msg[TUPLE_MSG])
-                                    # response = sqs.send_message(
-                                    #     QueueUrl=deadletter_url,
-                                    #     MessageBody=msg[TUPLE_MSG]["Body"],
-                                    # )
                                 delete_batch.append(msg[TUPLE_MSG])
-                                # delete_batch.append(
-                                #     {
-                                #         "Id": msg[TUPLE_MSG]["MessageId"],
-                                #         "ReceiptHandle": msg[TUPLE_MSG][
-                                #             "ReceiptHandle"
-                                #         ],
-                                #     }
-                                # )
                                 delete_cnt += 1
                                 if delete_cnt == 10:  # max for delete batch
                                     # FIXME: how to delete batch in azure?
                                     for msg in delete_batch:
                                         print(f"Deleting {msg}")
                                         receiver.complete_message(msg)
-                                    # sqs.delete_message_batch(
-                                    #     QueueUrl=queue_url, Entries=delete_batch
-                                    # )
                                     delete_batch = []
                                     delete_cnt = 0
 
@@ -229,9 +206,6 @@ try:
                                 for msg in delete_batch:
                                     print(f"Deleting {msg}")
                                     receiver.complete_message(msg)
-                                # sqs.delete_message_batch(
-                                #     QueueUrl=queue_url, Entries=delete_batch
-                                # )
 
                             if nowTime > logCheckTime + (
                                 LONG_RECORD / 2
@@ -260,14 +234,6 @@ try:
                                                 times_extended + 2
                                             ) * LONG_RECORD
                                             receiver.renew_message_lock(msg[TUPLE_MSG])
-                                            # note that if the queue visibility timeout is less than this then change_message_visibility will error
-                                            # sqs.change_message_visibility(
-                                            #     QueueUrl=queue_url,
-                                            #     ReceiptHandle=msg[TUPLE_MSG][
-                                            #         "ReceiptHandle"
-                                            #     ],
-                                            #     VisibilityTimeout=new_time,
-                                            # )
                                             futures[fut] = (
                                                 msg[TUPLE_MSG],
                                                 msg[TUPLE_STARTTIME],
@@ -281,18 +247,9 @@ try:
                                             f"All {executor._max_workers} threads are stuck on long running records"
                                         )
 
-                        # Really want something that forces an "I'm alive" to the server
-                        # pauseSeconds = governor.govern()
-                        # either governor fully triggered or our executor is full
-                        # not going to get more messages
-                        # if pauseSeconds < 0.0:
-                        #     time.sleep(1)
-                        #     continue
                         if len(futures) >= executor._max_workers + prefetch:
                             time.sleep(1)
                             continue
-                        # if pauseSeconds > 0.0:
-                        #     time.sleep(pauseSeconds)
 
                         while len(futures) < executor._max_workers + prefetch:
                             try:
@@ -302,12 +259,6 @@ try:
                                 response = receiver.receive_messages(
                                     max_message_count=max_msgs, max_wait_time=5
                                 )
-                                # response = sqs.receive_message(
-                                #     QueueUrl=queue_url,
-                                #     VisibilityTimeout=2 * LONG_RECORD,
-                                #     MaxNumberOfMessages=max_msgs,
-                                #     WaitTimeSeconds=1,
-                                # )
                                 # print(response)
                                 if not response:
                                     if len(futures) == 0:
