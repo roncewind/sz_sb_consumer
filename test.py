@@ -138,13 +138,11 @@ try:
         conn_str=connection_str
     ) as servicebus_client:
         with servicebus_client.get_queue_receiver(queue_name=queue_name) as receiver:
-            renewer.register(
-                receiver, receiver.session, max_lock_renewal_duration=3600
-            )  # Duration for how long to maintain the lock for, in seconds.
             received_msgs = receiver.receive_messages(
                 max_message_count=10, max_wait_time=5
             )
             for msg in received_msgs:
+                renewer.register(receiver, msg, max_lock_renewal_duration=3600)
                 process_msg(g2, msg, False)
                 receiver.complete_message(msg)
     renewer.close()
