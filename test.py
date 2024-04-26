@@ -317,7 +317,9 @@ try:
                                     break
                                 for this_msg in response:
                                     renewer.register(
-                                        receiver, msg, max_lock_renewal_duration=3600
+                                        receiver,
+                                        this_msg,
+                                        max_lock_renewal_duration=3600,
                                     )
                                     futures[
                                         executor.submit(
