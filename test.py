@@ -184,29 +184,29 @@ try:
                                 ) as err:
                                     print(err)
                                     # in SQS you have to push to deadletter
-                                    record = orjson.loads(msg[TUPLE_MSG]["Body"])
+                                    record = orjson.loads(str(msg[TUPLE_MSG]).strip())
                                     print(
                                         f'Sending to deadletter: {record["DATA_SOURCE"]} : {record["RECORD_ID"]}'
                                     )
-                                    receiver.dead_letter_message(msg)
+                                    receiver.dead_letter_message(msg[TUPLE_MSG])
                                     # response = sqs.send_message(
                                     #     QueueUrl=deadletter_url,
                                     #     MessageBody=msg[TUPLE_MSG]["Body"],
                                     # )
-
-                                delete_batch.append(
-                                    {
-                                        "Id": msg[TUPLE_MSG]["MessageId"],
-                                        "ReceiptHandle": msg[TUPLE_MSG][
-                                            "ReceiptHandle"
-                                        ],
-                                    }
-                                )
+                                delete_batch.append(msg[TUPLE_MSG])
+                                # delete_batch.append(
+                                #     {
+                                #         "Id": msg[TUPLE_MSG]["MessageId"],
+                                #         "ReceiptHandle": msg[TUPLE_MSG][
+                                #             "ReceiptHandle"
+                                #         ],
+                                #     }
+                                # )
                                 delete_cnt += 1
                                 if delete_cnt == 10:  # max for delete batch
                                     # FIXME: how to delete batch in azure?
                                     for msg in delete_batch:
-                                        print(f"Deleting {msg['Id']}")
+                                        print(f"Deleting {msg}")
                                         receiver.complete_message(msg)
                                     # sqs.delete_message_batch(
                                     #     QueueUrl=queue_url, Entries=delete_batch
@@ -229,7 +229,7 @@ try:
                             if delete_batch:
                                 # FIXME: how to delete batch in azure?
                                 for msg in delete_batch:
-                                    print(f"Deleting {msg['Id']}")
+                                    print(f"Deleting {msg}")
                                     receiver.complete_message(msg)
                                 # sqs.delete_message_batch(
                                 #     QueueUrl=queue_url, Entries=delete_batch
@@ -254,7 +254,7 @@ try:
                                         ):
                                             numStuck += 1
                                             record = orjson.loads(
-                                                msg[TUPLE_MSG]["Body"]
+                                                str(msg[TUPLE_MSG]).strip()
                                             )
                                             times_extended = msg[TUPLE_EXTENDED] + 1
                                             # push out the visibility another 2 LONG_RECORD times intervals
@@ -342,7 +342,7 @@ try:
                     for fut, msg in futures.items():
                         if not fut.done():
                             duration = nowTime - msg[TUPLE_STARTTIME]
-                            record = orjson.loads(msg[TUPLE_MSG]["Body"])
+                            record = orjson.loads(str(msg[TUPLE_MSG]).strip())
                             print(
                                 f'Still processing ({duration / 60:.1f} min: {record["DATA_SOURCE"]} : {record["RECORD_ID"]}'
                             )
