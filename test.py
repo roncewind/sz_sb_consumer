@@ -311,14 +311,17 @@ try:
                                 #     WaitTimeSeconds=1,
                                 # )
                                 print(response)
-                                if not response or not response.get("Messages"):
+                                if not response:
                                     if len(futures) == 0:
                                         time.sleep(0.1)
                                     break
-                                for this_msg in response["Messages"]:
+                                for this_msg in response:
+                                    renewer.register(
+                                        receiver, msg, max_lock_renewal_duration=3600
+                                    )
                                     futures[
                                         executor.submit(
-                                            process_msg, g2, this_msg["Body"], args.info
+                                            process_msg, g2, this_msg, args.info
                                         )
                                     ] = (this_msg, time.time(), 0)
                             except Exception as err:
