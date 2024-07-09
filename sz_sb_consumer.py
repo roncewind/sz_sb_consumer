@@ -121,6 +121,10 @@ try:
 
     if not max_workers:  # reset to null for executors
         max_workers = None
+        cpu_count = os.cpu_count()
+        prefetch = min(32, 0 if cpu_count is None else cpu_count + 4)
+    elif prefetch < 0:
+        prefetch = max_workers
 
     print(f"max_workers: {max_workers}")
     print(f"prefetch: {prefetch}")
@@ -134,17 +138,17 @@ try:
         )
         exit(-1)
 
-    renewer = AutoLockRenewer()
+    renewer = AutoLockRenewer(max_lock_renewal_duration=3600)
     with ServiceBusClient.from_connection_string(
         conn_str=connection_str
     ) as servicebus_client:
-        with servicebus_client.get_queue_receiver(queue_name=queue_name) as receiver:
+        with servicebus_client.get_queue_receiver(
+            queue_name=queue_name, prefetch_count=prefetch, auto_lock_renewer=renewer
+        ) as receiver:
 
             messages = 0
             duration = 0
             with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
-                if prefetch < 0:
-                    prefetch = executor._max_workers
 
                 print(f"Threads: {executor._max_workers}")
                 print(f"Prefetch: {prefetch}")
@@ -246,7 +250,6 @@ try:
                                         print(
                                             f"All {executor._max_workers} threads are stuck on long running records"
                                         )
-
                         if len(futures) >= executor._max_workers + prefetch:
                             time.sleep(1)
                             continue
@@ -265,11 +268,11 @@ try:
                                         time.sleep(0.1)
                                     break
                                 for this_msg in response:
-                                    renewer.register(
-                                        receiver,
-                                        this_msg,
-                                        max_lock_renewal_duration=3600,
-                                    )
+                                    # renewer.register(
+                                    #     receiver,
+                                    #     this_msg,
+                                    #     max_lock_renewal_duration=3600,
+                                    # )
                                     futures[
                                         executor.submit(
                                             process_msg, g2, this_msg, args.info
