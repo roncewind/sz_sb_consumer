@@ -4,7 +4,6 @@ import argparse
 import concurrent.futures
 import logging
 import os
-import random
 import sys
 import time
 import traceback
@@ -30,8 +29,8 @@ def process_msg(engine, msg, info):
         record = orjson.loads(str(msg).strip())
         # print("DATA_SOURCE: " + record["DATA_SOURCE"])
         print("RECORD_ID: " + record["RECORD_ID"])
-        rand_millis = random.randint(10, 1000)
-        time.sleep(rand_millis / 1000)
+        # rand_millis = random.randint(10, 1000)
+        # time.sleep(rand_millis / 1000)
         return None
         # if info:
         #     response = bytearray()
