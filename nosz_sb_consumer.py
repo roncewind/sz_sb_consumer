@@ -28,7 +28,7 @@ def process_msg(engine, msg, info):
     try:
         record = orjson.loads(str(msg).strip())
         # print("DATA_SOURCE: " + record["DATA_SOURCE"])
-        print("RECORD_ID: " + record["RECORD_ID"])
+        # print("RECORD_ID: " + record["RECORD_ID"])
         # rand_millis = random.randint(10, 1000)
         # time.sleep(rand_millis / 1000)
         return None
@@ -191,7 +191,7 @@ try:
                                 if delete_cnt == 10:  # max for delete batch
                                     # FIXME: how to delete batch in azure?
                                     for msg in delete_batch:
-                                        print(f"Deleting {msg}")
+                                        # print(f"Deleting {msg}")
                                         receiver.complete_message(msg)
                                     delete_batch = []
                                     delete_cnt = 0
@@ -211,7 +211,7 @@ try:
                             if delete_batch:
                                 # FIXME: how to delete batch in azure?
                                 for msg in delete_batch:
-                                    print(f"Deleting {msg}")
+                                    # print(f"Deleting {msg}")
                                     receiver.complete_message(msg)
 
                             if nowTime > logCheckTime + (
