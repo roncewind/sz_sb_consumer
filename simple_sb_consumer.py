@@ -119,7 +119,7 @@ try:
                 queue_name=queue_name,
                 prefetch_count=prefetch,
             )
-            if receiver.session() is None:
+            if receiver.session() == None:
                 print("Session is None")
             else:
                 print(receiver.session())
