@@ -7,7 +7,7 @@ import sys
 import time
 import traceback
 
-from azure.servicebus import AutoLockRenewer, ServiceBusClient
+from azure.servicebus import ServiceBusClient
 from senzing import G2Engine
 
 LONG_RECORD = int(os.getenv("LONG_RECORD", default=300))
@@ -110,14 +110,14 @@ try:
         exit(-1)
 
     message_count = 0
-    renewer = AutoLockRenewer(max_lock_renewal_duration=3600)
+    # renewer = AutoLockRenewer(max_lock_renewal_duration=3600)
     with ServiceBusClient.from_connection_string(
         conn_str=connection_str
     ) as servicebus_client:
         with servicebus_client.get_queue_receiver(
             queue_name=queue_name,
             prefetch_count=prefetch,
-            auto_lock_renewer=renewer,
+            # auto_lock_renewer=renewer,
             # receive_mode="peek_lock", # not a valid receive_mode error
             # receive_mode="PEEK_LOCK", # not a valid receive_mode error?
             # receive_mode=ServiceBusReceiveMode.PEEK_LOCK, # not a valid receive_mode error?!
