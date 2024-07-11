@@ -125,6 +125,7 @@ try:
                 message_count += 1
                 # receiver.complete_message(msg)
             print(f"Received {message_count} messages")
+            receiver.close()
             if not received_msgs:
                 print(f"Final received {message_count} messages")
                 break
