@@ -7,7 +7,7 @@ import sys
 import time
 import traceback
 
-from azure.servicebus import ServiceBusClient, ServiceBusReceiveMode
+from azure.servicebus import ServiceBusClient
 from senzing import G2Engine
 
 LONG_RECORD = int(os.getenv("LONG_RECORD", default=300))
@@ -114,28 +114,42 @@ try:
     with ServiceBusClient.from_connection_string(
         conn_str=connection_str
     ) as servicebus_client:
-        with servicebus_client.get_queue_receiver(
-            queue_name=queue_name,
-            prefetch_count=prefetch,
-            receive_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE,
-            # auto_lock_renewer=renewer,
-            # receive_mode="peek_lock", # not a valid receive_mode error
-            # receive_mode="PEEK_LOCK", # not a valid receive_mode error?
-            # receive_mode=ServiceBusReceiveMode.PEEK_LOCK, # not a valid receive_mode error?!
-        ) as receiver:
-            while True:
-                # received_msgs = receiver.receive_messages(
-                #     max_message_count=10, max_wait_time=5
-                # )
-                received_msgs = receiver.receive_messages(max_message_count=1)
-                for msg in received_msgs:
-                    # print(str(msg))
-                    message_count += 1
-                    # receiver.complete_message(msg)
-                print(f"Received {message_count} messages")
-                if not received_msgs:
-                    print(f"Final received {message_count} messages")
-                    break
+        while True:
+            receiver = servicebus_client.get_queue_receiver(
+                queue_name=queue_name,
+                prefetch_count=prefetch,
+            )
+            received_msgs = receiver.receive_messages(max_message_count=1)
+            for msg in received_msgs:
+                # print(str(msg))
+                message_count += 1
+                # receiver.complete_message(msg)
+            print(f"Received {message_count} messages")
+            if not received_msgs:
+                print(f"Final received {message_count} messages")
+                break
+        # with servicebus_client.get_queue_receiver(
+        #     queue_name=queue_name,
+        #     prefetch_count=prefetch,
+        #     receive_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE,
+        #     # auto_lock_renewer=renewer,
+        #     # receive_mode="peek_lock", # not a valid receive_mode error
+        #     # receive_mode="PEEK_LOCK", # not a valid receive_mode error?
+        #     # receive_mode=ServiceBusReceiveMode.PEEK_LOCK, # not a valid receive_mode error?!
+        # ) as receiver:
+        #     while True:
+        #         # received_msgs = receiver.receive_messages(
+        #         #     max_message_count=10, max_wait_time=5
+        #         # )
+        #         received_msgs = receiver.receive_messages(max_message_count=1)
+        #         for msg in received_msgs:
+        #             # print(str(msg))
+        #             message_count += 1
+        #             # receiver.complete_message(msg)
+        #         print(f"Received {message_count} messages")
+        #         if not received_msgs:
+        #             print(f"Final received {message_count} messages")
+        #             break
 except Exception as err:
     print(err, file=sys.stderr)
     traceback.print_exc()
