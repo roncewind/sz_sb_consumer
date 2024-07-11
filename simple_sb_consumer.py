@@ -7,7 +7,7 @@ import sys
 import time
 import traceback
 
-from azure.servicebus import ServiceBusClient
+from azure.servicebus import ServiceBusClient, ServiceBusReceiveMode
 from senzing import G2Engine
 
 LONG_RECORD = int(os.getenv("LONG_RECORD", default=300))
@@ -117,6 +117,7 @@ try:
         with servicebus_client.get_queue_receiver(
             queue_name=queue_name,
             prefetch_count=prefetch,
+            receive_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE,
             # auto_lock_renewer=renewer,
             # receive_mode="peek_lock", # not a valid receive_mode error
             # receive_mode="PEEK_LOCK", # not a valid receive_mode error?
@@ -130,7 +131,7 @@ try:
                 for msg in received_msgs:
                     # print(str(msg))
                     message_count += 1
-                    receiver.complete_message(msg)
+                    # receiver.complete_message(msg)
                 print(f"Received {message_count} messages")
                 if not received_msgs:
                     print(f"Final received {message_count} messages")
