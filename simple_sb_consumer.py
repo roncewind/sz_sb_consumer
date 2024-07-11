@@ -122,14 +122,18 @@ try:
             # receive_mode="PEEK_LOCK", # not a valid receive_mode error?
             # receive_mode=ServiceBusReceiveMode.PEEK_LOCK, # not a valid receive_mode error?!
         ) as receiver:
-            received_msgs = receiver.receive_messages(
-                max_message_count=10, max_wait_time=5
-            )
-            for msg in received_msgs:
-                # print(str(msg))
-                message_count += 1
-                receiver.complete_message(msg)
-            print(f"Received {message_count} messages")
+            while True:
+                received_msgs = receiver.receive_messages(
+                    max_message_count=10, max_wait_time=5
+                )
+                for msg in received_msgs:
+                    # print(str(msg))
+                    message_count += 1
+                    receiver.complete_message(msg)
+                print(f"Received {message_count} messages")
+                if not received_msgs:
+                    print(f"Final received {message_count} messages")
+                    break
 except Exception as err:
     print(err, file=sys.stderr)
     traceback.print_exc()
