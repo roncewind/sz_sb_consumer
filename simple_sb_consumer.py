@@ -118,7 +118,9 @@ try:
             queue_name=queue_name,
             prefetch_count=prefetch,
             auto_lock_renewer=renewer,
-            receive_mode="peek_lock",
+            # receive_mode="peek_lock", # not a valid receive_mode error
+            # receive_mode="PEEK_LOCK", # not a valid receive_mode error?
+            # receive_mode=ServiceBusReceiveMode.PEEK_LOCK, # not a valid receive_mode error?!
         ) as receiver:
             received_msgs = receiver.receive_messages(
                 max_message_count=10, max_wait_time=5
