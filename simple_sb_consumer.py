@@ -7,7 +7,7 @@ import sys
 import time
 import traceback
 
-from azure.servicebus import AutoLockRenewer, ServiceBusClient, ServiceBusReceiveMode
+from azure.servicebus import AutoLockRenewer, ServiceBusClient
 from senzing import G2Engine
 
 LONG_RECORD = int(os.getenv("LONG_RECORD", default=300))
@@ -118,7 +118,7 @@ try:
             queue_name=queue_name,
             prefetch_count=prefetch,
             auto_lock_renewer=renewer,
-            receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+            receive_mode="peek_lock",
         ) as receiver:
             received_msgs = receiver.receive_messages(
                 max_message_count=10, max_wait_time=5
