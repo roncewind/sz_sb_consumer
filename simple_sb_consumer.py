@@ -114,25 +114,25 @@ try:
     with ServiceBusClient.from_connection_string(
         conn_str=connection_str
     ) as servicebus_client:
+        receiver = servicebus_client.get_queue_receiver(
+            queue_name=queue_name,
+            prefetch_count=prefetch,
+        )
         while True:
-            receiver = servicebus_client.get_queue_receiver(
-                queue_name=queue_name,
-                prefetch_count=prefetch,
+            received_msgs = receiver.receive_messages(
+                max_message_count=10, max_wait_time=5
             )
-            if receiver._session is None:
-                print("Session is None")
-            else:
-                print(receiver.session())
-            received_msgs = receiver.receive_messages(max_message_count=1)
             for msg in received_msgs:
                 # print(str(msg))
                 message_count += 1
                 # receiver.complete_message(msg)
             print(f"Received {message_count} messages")
-            receiver.close()
             if not received_msgs:
-                print(f"Final received {message_count} messages")
-                break
+                receiver.close()
+                receiver = servicebus_client.get_queue_receiver(
+                    queue_name=queue_name,
+                    prefetch_count=prefetch,
+                )
         # with servicebus_client.get_queue_receiver(
         #     queue_name=queue_name,
         #     prefetch_count=prefetch,
