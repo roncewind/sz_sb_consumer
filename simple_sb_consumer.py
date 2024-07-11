@@ -123,9 +123,10 @@ try:
             # receive_mode=ServiceBusReceiveMode.PEEK_LOCK, # not a valid receive_mode error?!
         ) as receiver:
             while True:
-                received_msgs = receiver.receive_messages(
-                    max_message_count=10, max_wait_time=5
-                )
+                # received_msgs = receiver.receive_messages(
+                #     max_message_count=10, max_wait_time=5
+                # )
+                received_msgs = receiver.receive_messages(max_message_count=1)
                 for msg in received_msgs:
                     # print(str(msg))
                     message_count += 1
