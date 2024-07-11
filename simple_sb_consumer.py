@@ -119,7 +119,9 @@ try:
                 queue_name=queue_name,
                 prefetch_count=prefetch,
             )
-            if receiver.session():
+            if receiver.session() is None:
+                print("Session is None")
+            else:
                 print(receiver.session())
             received_msgs = receiver.receive_messages(max_message_count=1)
             for msg in received_msgs:
