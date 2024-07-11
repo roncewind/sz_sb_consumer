@@ -262,10 +262,11 @@ try:
                                 max_msgs = min(
                                     10, executor._max_workers + prefetch - len(futures)
                                 )
+                                print(f"Receiving {max_msgs} messages")
                                 response = receiver.receive_messages(
                                     max_message_count=max_msgs, max_wait_time=5
                                 )
-                                # print(response)
+                                print(response)
                                 if not response:
                                     if len(futures) == 0:
                                         time.sleep(0.1)
