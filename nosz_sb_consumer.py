@@ -257,7 +257,7 @@ try:
                     while len(futures) < executor._max_workers + prefetch:
                         try:
                             max_msgs = executor._max_workers + prefetch - len(futures)
-                            print(f"Receiving {max_msgs} messages")
+                            # print(f"Receiving {max_msgs} messages")
                             response = receiver.receive_messages(
                                 max_message_count=max_msgs, max_wait_time=5
                             )
@@ -272,11 +272,6 @@ try:
                                     )
                                 break
                             for this_msg in response:
-                                # renewer.register(
-                                #     receiver,
-                                #     this_msg,
-                                #     max_lock_renewal_duration=3600,
-                                # )
                                 futures[
                                     executor.submit(
                                         process_msg, g2, this_msg, args.info
