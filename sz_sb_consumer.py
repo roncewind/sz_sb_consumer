@@ -261,6 +261,7 @@ try:
                             if not response:
                                 if len(futures) == 0:
                                     receiver.close()
+                                    print("Recreating receiver.")
                                     receiver = servicebus_client.get_queue_receiver(
                                         queue_name=queue_name,
                                         prefetch_count=prefetch,
@@ -295,7 +296,6 @@ try:
                         )
                 executor.shutdown()
                 exit(-1)
-
     renewer.close()
 
 except Exception as err:
