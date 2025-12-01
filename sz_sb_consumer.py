@@ -9,8 +9,9 @@ import time
 import traceback
 
 import orjson
+import senzing_core
 from azure.servicebus import AutoLockRenewer, ServiceBusClient
-from senzing import G2BadInputException, G2Engine, G2RetryTimeoutExceeded
+from senzing import SzBadInputError, SzEngineFlags, SzRetryTimeoutExceededError
 
 INTERVAL = 10000
 LONG_RECORD = int(os.getenv("LONG_RECORD", default=300))
@@ -27,16 +28,13 @@ log_format = "%(asctime)s %(message)s"
 def process_msg(engine, msg, info):
     try:
         record = orjson.loads(str(msg).strip())
-        # print("DATA_SOURCE: " + record["DATA_SOURCE"])
-        # print("RECORD_ID: " + record["RECORD_ID"])
         if info:
-            response = bytearray()
-            engine.addRecordWithInfo(
-                record["DATA_SOURCE"], record["RECORD_ID"], msg, response
+            response = engine.add_record(
+                record["DATA_SOURCE"], record["RECORD_ID"], str(msg).strip(), SzEngineFlags.SZ_WITH_INFO
             )
-            return response.decode()
+            return response
         else:
-            engine.addRecord(
+            engine.add_record(
                 record["DATA_SOURCE"], record["RECORD_ID"], str(msg).strip()
             )
             return None
@@ -98,14 +96,14 @@ try:
         )
         exit(-1)
 
-    # Initialize the G2Engine
-    print("Initializing G2 engine")
-    g2 = G2Engine()
-    g2.init("sz_sb_consumer", engine_config, args.debugTrace)
+    # Initialize the Senzing engine using the new SDK
+    print("Initializing Senzing engine")
+    factory = senzing_core.SzAbstractFactoryCore("sz_sb_consumer", engine_config, verbose_logging=args.debugTrace)
+    g2 = factory.create_engine()
     logCheckTime = prevTime = time.time()
-    print(f"Initializing G2 engine completed: {logCheckTime}")
+    print(f"Initializing Senzing engine completed: {logCheckTime}")
 
-    # setupt the queue
+    # setup the queue
     connection_str = args.url
     if not connection_str:
         connection_str = os.getenv("SENZING_AZURE_QUEUE_CONNECTION_STRING")
@@ -170,11 +168,11 @@ try:
                             msg = futures.pop(fut)
                             try:
                                 result = fut.result()
-                                # if result:
-                                # print(result)  # we would handle pushing to withinfo queues here BUT that is likely a second future task/executor
+                                if result:
+                                    print(result)  # we would handle pushing to withinfo queues here
                             except (
-                                G2RetryTimeoutExceeded,
-                                G2BadInputException,
+                                SzRetryTimeoutExceededError,
+                                SzBadInputError,
                             ) as err:
                                 print(err)
                                 record = orjson.loads(str(msg[TUPLE_MSG]).strip())
@@ -185,10 +183,8 @@ try:
                             delete_batch.append(msg[TUPLE_MSG])
                             delete_cnt += 1
                             if delete_cnt == 10:  # max for delete batch
-                                # FIXME: how to delete batch in azure?
-                                for msg in delete_batch:
-                                    # print(f"Deleting {msg}")
-                                    receiver.complete_message(msg)
+                                for msg_to_complete in delete_batch:
+                                    receiver.complete_message(msg_to_complete)
                                 delete_batch = []
                                 delete_cnt = 0
 
@@ -205,19 +201,16 @@ try:
                                 prevTime = nowTime
 
                         if delete_batch:
-                            # FIXME: how to delete batch in azure?
-                            for msg in delete_batch:
-                                # print(f"Deleting {msg}")
-                                receiver.complete_message(msg)
+                            for msg_to_complete in delete_batch:
+                                receiver.complete_message(msg_to_complete)
 
                         if nowTime > logCheckTime + (
                             LONG_RECORD / 2
                         ):  # log long running records
                             logCheckTime = nowTime
 
-                            response = bytearray()
-                            g2.stats(response)
-                            print(f"\n{response.decode()}\n")
+                            response = g2.get_stats()
+                            print(f"\n{response}\n")
 
                             numStuck = 0
                             numRejected = 0
@@ -257,7 +250,6 @@ try:
                             response = receiver.receive_messages(
                                 max_message_count=max_msgs, max_wait_time=5
                             )
-                            # print(response)
                             if not response:
                                 if len(futures) == 0:
                                     receiver.close()
