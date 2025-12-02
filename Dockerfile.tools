@@ -10,18 +10,26 @@ FROM ${BASE_IMAGE}
 
 USER root
 
-# Install MSSQL ODBC drivers
+# Install MSSQL ODBC drivers and sqlcmd (Go version for Managed Identity support)
+# Note: mssql-tools18 (ODBC) does NOT support ActiveDirectoryManagedIdentity
+#       sqlcmd (Go) DOES support --authentication-method ActiveDirectoryManagedIdentity
+# See: https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-authentication
+ARG SQLCMD_VERSION=1.9.0
 RUN apt-get update && \
     apt-get -y install apt-transport-https curl gnupg && \
-    # Add Microsoft package repository for MSSQL tools (Debian 13/trixie uses Debian 12 packages)
+    # Add Microsoft package repository (Debian 13/trixie uses Debian 12 packages)
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list && \
     apt-get update && \
-    ACCEPT_EULA=Y apt-get -y install msodbcsql18 mssql-tools18 unixodbc && \
+    # Install ODBC driver (required by Senzing for MSSQL connectivity)
+    ACCEPT_EULA=Y apt-get -y install msodbcsql18 unixodbc && \
+    # Install sqlcmd (Go version) from GitHub releases - not available in apt repos
+    apt-get -y install bzip2 && \
+    curl -fsSL -o /tmp/sqlcmd.tar.bz2 "https://github.com/microsoft/go-sqlcmd/releases/download/v${SQLCMD_VERSION}/sqlcmd-linux-amd64.tar.bz2" && \
+    tar -xjf /tmp/sqlcmd.tar.bz2 -C /usr/local/bin && \
+    rm /tmp/sqlcmd.tar.bz2 && \
     # Cleanup
     apt-get -y clean && rm -rf /var/lib/apt/lists/*
-
-ENV PATH="/opt/mssql-tools18/bin:${PATH}"
 
 USER 1001
 
