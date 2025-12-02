@@ -24,7 +24,9 @@ RUN apt-get update && \
     # Install ODBC driver (required by Senzing for MSSQL connectivity)
     ACCEPT_EULA=Y apt-get -y install msodbcsql18 unixodbc unixodbc-dev python3-pip && \
     # Install pyodbc for sz_explorer direct database queries
+    # Install to system, then copy to venv site-packages
     pip3 install --break-system-packages pyodbc && \
+    cp -r /usr/local/lib/python3.13/dist-packages/pyodbc* /app/venv/lib/python3.13/site-packages/ && \
     # Install sqlcmd (Go version) from GitHub releases - not available in apt repos
     apt-get -y install bzip2 && \
     curl -fsSL -o /tmp/sqlcmd.tar.bz2 "https://github.com/microsoft/go-sqlcmd/releases/download/v${SQLCMD_VERSION}/sqlcmd-linux-amd64.tar.bz2" && \
