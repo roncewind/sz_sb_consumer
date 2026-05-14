@@ -15,7 +15,8 @@ USER root
 #       sqlcmd (Go) DOES support --authentication-method ActiveDirectoryManagedIdentity
 # See: https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-authentication
 ARG SQLCMD_VERSION=1.9.0
-RUN apt-get update && \
+RUN rm -f /etc/apt/sources.list.d/senzing-staging*.list && \
+    apt-get update && \
     apt-get -y install apt-transport-https curl gnupg && \
     # Add Microsoft package repository (Debian 13/trixie uses Debian 12 packages)
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \

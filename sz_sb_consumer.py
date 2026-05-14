@@ -1,9 +1,12 @@
 #! /usr/bin/env python3
 
 import argparse
+import atexit
+import builtins
 import concurrent.futures
 import logging
 import os
+import signal
 import sys
 import time
 import traceback
@@ -21,6 +24,51 @@ TUPLE_STARTTIME = 1
 TUPLE_EXTENDED = 2
 
 log_format = "%(asctime)s %(message)s"
+
+
+# -----------------------------------------------------------------------------
+# Death-cause diagnostics: capture signals + log every sys.exit call with a stack trace.
+# Helps diagnose containers exiting with code 255 (exit(-1)) when no other log
+# output precedes the death. Output goes to stderr with explicit flush.
+def _signal_handler(signum, frame):
+    sig_name = signal.Signals(signum).name if hasattr(signal, "Signals") else str(signum)
+    print(f"\n!!! Received signal {signum} ({sig_name}) — about to exit !!!", file=sys.stderr, flush=True)
+    traceback.print_stack(frame, file=sys.stderr)
+    sys.stderr.flush()
+    sys.exit(128 + signum)
+
+
+for _sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT):
+    try:
+        signal.signal(_sig, _signal_handler)
+    except (ValueError, OSError):
+        # Some signals can't be caught in non-main threads or on some platforms.
+        pass
+
+
+_real_sys_exit = sys.exit
+
+
+def _logged_exit(code=None):
+    # Code uses bare exit(-1) and sys.exit(-1) interchangeably; both routed here.
+    print(f"\n!!! exit({code}) called from:", file=sys.stderr, flush=True)
+    traceback.print_stack(file=sys.stderr)
+    sys.stderr.flush()
+    _real_sys_exit(code)
+
+
+sys.exit = _logged_exit
+builtins.exit = _logged_exit  # also hook the `exit()` builtin from site.py
+
+
+# Last-resort atexit handler — fires no matter what (signal, sys.exit, fall-off-end).
+# Helps confirm process actually died gracefully vs being killed externally.
+def _atexit_marker():
+    print("!!! atexit handler running — process exiting gracefully", file=sys.stderr, flush=True)
+    sys.stderr.flush()
+
+
+atexit.register(_atexit_marker)
 
 
 # -----------------------------------------------------------------------------
