@@ -27,9 +27,23 @@ log_format = "%(asctime)s %(message)s"
 
 
 # -----------------------------------------------------------------------------
+# Exit codes — picked outside Linux-reserved ranges (1, 2, 126-143, 255) so they
+# aren't confused with signal kills or shell errors. Lets `az containerapp replica
+# list` / `kubectl get pods` show death cause via exit code alone.
+EXIT_OK = 0
+EXIT_MISSING_ENGINE_CONFIG = 10         # SENZING_ENGINE_CONFIGURATION_JSON unset
+EXIT_MISSING_QUEUE_CONN_STR = 11        # SENZING_AZURE_QUEUE_CONNECTION_STRING unset
+EXIT_MISSING_QUEUE_NAME = 12            # SENZING_AZURE_QUEUE_NAME unset
+EXIT_MAIN_LOOP_SENZ_ERROR = 40          # Senzing engine raised (e.g. SENZ1003 from BC log-holdup)
+EXIT_MAIN_LOOP_SERVICE_BUS_ERROR = 41   # azure.servicebus exception
+EXIT_MAIN_LOOP_OTHER = 49               # main loop catch-all
+EXIT_OUTER_EXCEPTION = 99               # escaped to module-scope try/except
+
+
+# -----------------------------------------------------------------------------
 # Death-cause diagnostics: capture signals + log every sys.exit call with a stack trace.
-# Helps diagnose containers exiting with code 255 (exit(-1)) when no other log
-# output precedes the death. Output goes to stderr with explicit flush.
+# Helps diagnose containers exiting when no other log output precedes the death.
+# Output goes to stderr with explicit flush.
 def _signal_handler(signum, frame):
     sig_name = signal.Signals(signum).name if hasattr(signal, "Signals") else str(signum)
     print(f"\n!!! Received signal {signum} ({sig_name}) — about to exit !!!", file=sys.stderr, flush=True)
@@ -50,7 +64,7 @@ _real_sys_exit = sys.exit
 
 
 def _logged_exit(code=None):
-    # Code uses bare exit(-1) and sys.exit(-1) interchangeably; both routed here.
+    # Code uses bare exit() and sys.exit() interchangeably; both routed here.
     print(f"\n!!! exit({code}) called from:", file=sys.stderr, flush=True)
     traceback.print_stack(file=sys.stderr)
     sys.stderr.flush()
@@ -59,6 +73,18 @@ def _logged_exit(code=None):
 
 sys.exit = _logged_exit
 builtins.exit = _logged_exit  # also hook the `exit()` builtin from site.py
+
+
+def _classify_main_loop_error(err):
+    # Inspect exception type/module/message to pick a meaningful exit code.
+    # Uses introspection only so we don't need imports beyond what's already loaded.
+    type_name = type(err).__name__
+    err_module = type(err).__module__.lower()
+    if type_name.startswith("Sz") or "SENZ" in str(err):
+        return EXIT_MAIN_LOOP_SENZ_ERROR
+    if "servicebus" in err_module:
+        return EXIT_MAIN_LOOP_SERVICE_BUS_ERROR
+    return EXIT_MAIN_LOOP_OTHER
 
 
 # Last-resort atexit handler — fires no matter what (signal, sys.exit, fall-off-end).
@@ -142,7 +168,7 @@ try:
             "Please see https://senzing.zendesk.com/hc/en-us/articles/360038774134-G2Module-Configuration-and-the-Senzing-API",
             file=sys.stderr,
         )
-        exit(-1)
+        exit(EXIT_MISSING_ENGINE_CONFIG)
 
     # Initialize the Senzing engine using the new SDK
     print("Initializing Senzing engine")
@@ -160,7 +186,7 @@ try:
             "The environment variable SENZING_AZURE_QUEUE_CONNECTION_STRING must be set.",
             file=sys.stderr,
         )
-        exit(-1)
+        exit(EXIT_MISSING_QUEUE_CONN_STR)
 
     max_workers = int(os.getenv("SENZING_THREADS_PER_PROCESS", 0))
     prefetch = int(os.getenv("SENZING_PREFETCH", -1))
@@ -182,7 +208,7 @@ try:
             "The environment variable SENZING_AZURE_QUEUE_NAME must be set.",
             file=sys.stderr,
         )
-        exit(-1)
+        exit(EXIT_MISSING_QUEUE_NAME)
 
     renewer = AutoLockRenewer(max_lock_renewal_duration=3600)
     with ServiceBusClient.from_connection_string(
@@ -335,12 +361,12 @@ try:
                             f'Still processing ({duration / 60:.1f} min: {record["DATA_SOURCE"]} : {record["RECORD_ID"]}'
                         )
                 executor.shutdown()
-                exit(-1)
+                exit(_classify_main_loop_error(err))
     renewer.close()
 
 except Exception as err:
     print(err, file=sys.stderr)
     traceback.print_exc()
-    exit(-1)
+    exit(EXIT_OUTER_EXCEPTION)
 
 print("Receive is done.")
