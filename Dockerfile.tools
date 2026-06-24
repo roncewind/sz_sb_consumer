@@ -27,7 +27,7 @@ RUN rm -f /etc/apt/sources.list.d/senzing-staging*.list && \
     # Install pyodbc for sz_explorer direct database queries
     # Install to system, then copy to venv site-packages
     pip3 install --break-system-packages pyodbc && \
-    cp -r /usr/local/lib/python3.13/dist-packages/pyodbc* /app/venv/lib/python3.13/site-packages/ && \
+    # cp -r /usr/local/lib/python3.13/dist-packages/pyodbc* /app/venv/lib/python3.13/site-packages/ && \
     # Install sqlcmd (Go version) from GitHub releases - not available in apt repos
     apt-get -y install bzip2 && \
     curl -fsSL -o /tmp/sqlcmd.tar.bz2 "https://github.com/microsoft/go-sqlcmd/releases/download/v${SQLCMD_VERSION}/sqlcmd-linux-amd64.tar.bz2" && \
