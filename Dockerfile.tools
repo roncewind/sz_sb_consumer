@@ -15,12 +15,15 @@ USER root
 #       sqlcmd (Go) DOES support --authentication-method ActiveDirectoryManagedIdentity
 # See: https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-authentication
 ARG SQLCMD_VERSION=1.9.0
-RUN rm -f /etc/apt/sources.list.d/senzing-staging*.list && \
+RUN . /etc/os-release && \
+    rm -f /etc/apt/sources.list.d/senzing-staging*.list && \
     apt-get update && \
-    apt-get -y install apt-transport-https curl gnupg && \
-    # Add Microsoft package repository (Debian 13/trixie uses Debian 12 packages)
-    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get -y install curl && \
+    # Add Microsoft's official repo + signing key for this Debian release.
+    # See Dockerfile.redoer for why we use the config package instead of microsoft.asc.
+    curl -fsSL -O "https://packages.microsoft.com/config/debian/${VERSION_ID}/packages-microsoft-prod.deb" && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm -f packages-microsoft-prod.deb && \
     apt-get update && \
     # Install ODBC driver (required by Senzing for MSSQL connectivity)
     ACCEPT_EULA=Y apt-get -y install msodbcsql18 unixodbc unixodbc-dev python3-pip && \

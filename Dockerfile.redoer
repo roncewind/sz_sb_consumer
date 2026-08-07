@@ -9,13 +9,21 @@ FROM ${BASE_IMAGE}
 
 USER root
 
-# Install MSSQL ODBC drivers
-# The base redoer image is Debian-based, so we use the Debian 12 (bookworm) packages
-RUN apt-get update && \
-    apt-get -y install apt-transport-https curl gnupg && \
-    # Add Microsoft package repository (modern Debian approach with signed-by)
-    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list && \
+# Install the MSSQL ODBC driver via Microsoft's official config package, which sets up
+# the apt repo AND the correct signing key for this Debian release at
+# /usr/share/keyrings/microsoft-prod.gpg.
+#   - Don't hand-roll the repo from microsoft.asc: that bundle only has the old 2015 key
+#     (EB3E94ADBE1229CF); the debian/13 (trixie) repo is signed with a newer key
+#     (EE4D7792F748182B), so trixie's strict sqv verifier rejects it as "not signed".
+#   - Don't rely on the base image having the repo: some base tags pre-configure it,
+#     some (e.g. :staging) do not, so we install it ourselves to stay reproducible.
+#   - ${VERSION_ID} (12=bookworm, 13=trixie) tracks whatever Debian the base ships.
+RUN . /etc/os-release && \
+    apt-get update && \
+    apt-get -y install curl && \
+    curl -fsSL -O "https://packages.microsoft.com/config/debian/${VERSION_ID}/packages-microsoft-prod.deb" && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm -f packages-microsoft-prod.deb && \
     apt-get update && \
     ACCEPT_EULA=Y apt-get -y install msodbcsql18 && \
     # Cleanup

@@ -11,12 +11,14 @@ FROM ${BASE_IMAGE}
 USER root
 
 # Install Python, MSSQL ODBC drivers, and dependencies
-RUN apt-get update && \
-    apt-get -y install apt-transport-https wget curl gnupg python3 python3-pip python3-venv && \
-    # Add Microsoft package repository for MSSQL tools (Debian 13/trixie uses Debian 12 packages)
-    # Use /usr/share/keyrings for the GPG key (modern Debian approach)
-    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list && \
+RUN . /etc/os-release && \
+    apt-get update && \
+    apt-get -y install curl python3 python3-pip python3-venv && \
+    # Add Microsoft's official repo + signing key for this Debian release.
+    # See Dockerfile.redoer for why we use the config package instead of microsoft.asc.
+    curl -fsSL -O "https://packages.microsoft.com/config/debian/${VERSION_ID}/packages-microsoft-prod.deb" && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm -f packages-microsoft-prod.deb && \
     apt-get update && \
     ACCEPT_EULA=Y apt-get -y install msodbcsql18 mssql-tools18 && \
     # Create venv with access to system packages (for senzing_core)
