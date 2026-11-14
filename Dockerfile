@@ -10,6 +10,9 @@ FROM ${BASE_IMAGE}
 
 USER root
 
+# Pinned Python deps (see requirement.txt for why: an unpinned azure-servicebus bump cost ~2.5x throughput)
+COPY requirement.txt /tmp/requirement.txt
+
 # Install Python, MSSQL ODBC drivers, and dependencies
 RUN . /etc/os-release && \
     apt-get update && \
@@ -24,7 +27,7 @@ RUN . /etc/os-release && \
     # Create venv with access to system packages (for senzing_core)
     python3 -m venv --system-site-packages /app/venv && \
     /app/venv/bin/pip install --upgrade pip && \
-    /app/venv/bin/pip install orjson azure-servicebus azure-identity senzing senzing_core && \
+    /app/venv/bin/pip install --no-cache-dir -r /tmp/requirement.txt && \
     # Cleanup
     apt-get -y clean && rm -rf /var/lib/apt/lists/*
 
